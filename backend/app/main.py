@@ -32,3 +32,7 @@ def home():
 @app.get("/health")
 def health():
     return {"status": "ok", "service": settings.app_name, "version": "0.3.0"}
+
+@app.get("/healthz")
+def healthz():
+    return {"status": "ok"}

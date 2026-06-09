@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Secure Distributed Storage Security Platform</title>
   <style>
-    :root { --bg:#07101e; --panel:#101b2d; --panel2:#081224; --line:#2c3c55; --text:#eef4ff; --muted:#9db0c9; --blue:#2f6df6; --green:#22c55e; --red:#ef4444; --yellow:#f59e0b; --cyan:#38bdf8; --purple:#a78bfa; }
+    :root { --bg:#07101e; --panel:#101b2d; --panel2:#081224; --line:#2c3c55; --text:#eef4ff; --muted:#9db0c9; --blue:#2f6df6; --green:#22c55e; --red:#ef4444; --yellow:#f59e0b; --cyan:#38bdf8; }
     * { box-sizing:border-box; }
     body { margin:0; font-family:Inter, Segoe UI, Arial, sans-serif; background:var(--bg); color:var(--text); }
     header { padding:30px 36px; background:linear-gradient(135deg,#111827,#1e3a8a); border-bottom:1px solid var(--line); }
-    h1 { margin:0 0 8px; font-size:34px; letter-spacing:.2px; }
+    h1 { margin:0 0 8px; font-size:34px; }
     h2 { margin:0 0 18px; font-size:25px; }
     h3 { margin:0 0 12px; }
     .sub { color:#cbd5e1; font-size:15px; }
@@ -67,11 +67,18 @@
   <h1>Secure Distributed Storage Security Platform</h1>
   <div class="sub">Secure File Storage • Distributed Nodes • AES-256-GCM • Consistent Hashing • Merkle Integrity Verification • Intrusion Detection</div>
 </header>
+
 <div class="layout">
   <aside>
     <div class="nav">
-      <a href="#dashboard">Dashboard</a><a href="#storage">Storage</a><a href="#security">Security Monitoring</a><a href="#cluster">Cluster Management</a><a href="#audit">Audit Logs</a><a href="#academic">Academic Visualisation</a>
+      <a href="#dashboard">Dashboard</a>
+      <a href="#storage">Storage</a>
+      <a href="#security">Security Monitoring</a>
+      <a href="#cluster">Cluster Management</a>
+      <a href="#audit">Audit Logs</a>
+      <a href="#academic">Academic Visualisation</a>
     </div>
+
     <div class="card">
       <h2>Account</h2>
       <input id="username" value="demo" placeholder="Username" />
@@ -81,17 +88,20 @@
       <button class="danger" onclick="failedLoginBurst()">Trigger Brute-Force Demo</button>
       <p id="authStatus" class="muted">Not logged in</p>
     </div>
+
     <div class="card">
       <h2>Upload File</h2>
       <input id="fileInput" type="file" />
       <button onclick="uploadFile()">Upload Encrypted File</button>
       <p id="uploadStatus" class="muted">No upload yet.</p>
     </div>
+
     <div class="card">
       <h2>Demo Flow</h2>
       <div id="demoFlow" class="small">Loading...</div>
     </div>
   </aside>
+
   <main id="dashboard">
     <section class="metrics" id="metrics"></section>
 
@@ -129,6 +139,7 @@
       <p class="muted">Select a file from File Explorer. This section shows the academic algorithms promised in the proposal: chunking, AES-GCM encryption, SHA-256/Merkle verification, consistent hashing, replication, IDS monitoring, and recovery.</p>
       <div id="selectedFile" class="small"></div>
       <div id="pipeline" class="pipeline"></div>
+
       <div class="viz-grid">
         <div>
           <h3>Merkle Tree Integrity View</h3>
@@ -139,40 +150,302 @@
           <div id="hashRing" class="hash-ring"><div class="ring-center">Select File<br><span class="small">Hash Ring</span></div></div>
         </div>
       </div>
+
       <div id="assignments"></div>
       <div id="chunksTable" style="margin-top:14px;"></div>
     </section>
   </main>
 </div>
+
 <script>
 let token = localStorage.getItem('token') || '';
 let latestFiles = [];
-const api = (path, opts={}) => fetch('/api' + path, { ...opts, headers: { ...(opts.headers||{}), ...(token ? {Authorization:'Bearer '+token} : {}) }});
+
+const API_BASE = "https://acaproj.onrender.com";
+
+const api = (path, opts = {}) =>
+  fetch(API_BASE + '/api' + path, {
+    ...opts,
+    headers: {
+      ...(opts.headers || {}),
+      ...(token ? { Authorization: 'Bearer ' + token } : {})
+    }
+  });
+
 const fmtTime = ms => new Date(ms).toLocaleString();
 const esc = s => String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-function statusText(){ document.getElementById('authStatus').innerHTML = token ? '<span class="ok">Logged in</span>' : '<span class="muted">Not logged in</span>'; }
-async function registerUser(){ const r=await api('/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:username.value,password:password.value})}); authStatus.textContent=r.ok?'Registered. Now login.':await r.text(); refreshAll(); }
-async function loginUser(){ const r=await api('/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:username.value,password:password.value})}); if(r.ok){ const j=await r.json(); token=j.access_token; localStorage.setItem('token',token); authStatus.innerHTML='<span class="ok">Logged in</span>'; refreshAll(); } else authStatus.textContent=await r.text(); }
-async function failedLoginBurst(){ for(let i=0;i<5;i++){ await api('/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:username.value,password:'wrong-password-'+Math.random()})}); } refreshAll(); }
-async function uploadFile(){ if(!token) return uploadStatus.innerHTML='<span class="bad">Login first.</span>'; const f=fileInput.files[0]; if(!f) return uploadStatus.textContent='Choose a file first.'; const fd=new FormData(); fd.append('file',f); const r=await api('/files/upload',{method:'POST',body:fd}); if(r.ok){ const j=await r.json(); uploadStatus.innerHTML=`<span class="ok">Uploaded ${esc(j.filename)}</span><br><span class="small">${j.chunks} chunks • RF ${j.replication_factor} • ${j.size_human} • ${j.elapsed_ms}ms</span>`; await refreshAll(); await showPipeline(j.file_id); } else uploadStatus.textContent=await r.text(); }
-async function downloadFile(id){ const r=await api('/files/'+id+'/download'); if(!r.ok){ alert(await r.text()); refreshAll(); return; } const blob=await r.blob(); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='recovered-file'; a.click(); setTimeout(refreshAll, 400); }
-async function corruptNode(id){ const r=await api('/nodes/'+id+'/corrupt-one-chunk',{method:'POST'}); if(!r.ok) alert(await r.text()); refreshAll(); }
-async function toggleNode(id){ await api('/nodes/'+id+'/toggle',{method:'POST'}); refreshAll(); }
-function renderTable(headers, rows){ if(!rows.length) return '<p class="muted">No records yet.</p>'; return `<table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table>`; }
-async function refreshStatus(){ const r=await api('/status'); const j=await r.json(); const m=j.metrics || {}; metrics.innerHTML = [ ['Files',m.files||0], ['Logical Chunks',m.logical_chunks||0], ['Stored Replicas',m.stored_replicas||0], ['Healthy Nodes',`${m.healthy_nodes||0}/${m.total_nodes||0}`], ['IDS Alerts',m.alerts||0], ['Storage Used',m.storage_used_human||'0 B'] ].map(x=>`<div class="metric"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
- topology.innerHTML = `<div class="coordinator">Coordinator<br><span class="small">Auth • Routing • IDS</span></div><div class="arrow">→</div>` + j.nodes.map(n=>`<div class="topnode ${n.healthy?'':'offline'}">${n.node_id}<br><span class="${n.healthy?'ok':'bad'}">${n.status}</span></div>`).join('');
- nodes.innerHTML = j.nodes.map(n=>`<div class="node ${n.healthy?'':'offline'}"><h3>${n.node_id}</h3><p class="${n.healthy?'ok':'bad'}">${n.status}</p><p>Stored replicas: <b>${n.chunk_count}</b></p><p>Corruptions: <b>${n.corruptions}</b></p><button class="danger small" onclick="corruptNode('${n.node_id}')">Corrupt One Chunk</button><button class="secondary small" onclick="toggleNode('${n.node_id}')">Toggle Health</button></div>`).join(''); }
-async function refreshFiles(){ if(!token) return filesTable.innerHTML='<span class="bad">Login first.</span>'; const r=await api('/files'); if(!r.ok) return filesTable.textContent=await r.text(); latestFiles=await r.json(); const rows=latestFiles.map(f=>`<tr><td>${esc(f.filename)}<br><span class="small">${f.file_id}</span></td><td>${f.size_human}</td><td>${f.chunks}</td><td>${f.replicas}</td><td><span class="pill">${f.status}</span></td><td>${f.node_distribution.map(n=>`<span class="pill">${n}</span>`).join('')}</td><td><button class="small" onclick="showPipeline('${f.file_id}')">Pipeline</button><button class="secondary small" onclick="downloadFile('${f.file_id}')">Download & Verify</button></td></tr>`); filesTable.innerHTML=renderTable(['File','Size','Chunks','Replicas','Status','Nodes','Actions'], rows); }
-function renderMerkle(levels){ if(!levels || !levels.length) return '<p class="muted">No Merkle data.</p>'; return levels.map((level,i)=>`<div class="merkle-level"><span class="pill">${i===levels.length-1?'Root':'Level '+i}</span>${level.map(h=>`<span class="hashbox">${esc(h)}</span>`).join('')}</div>`).join(''); }
-function renderHashRing(data){ const nodes = data?.nodes || []; const center = 180, radius = 130; let html = '<div class="ring-center">Consistent<br>Hash Ring</div>'; for(const n of nodes){ const rad=(n.angle-90)*Math.PI/180; const x=center+radius*Math.cos(rad); const y=center+radius*Math.sin(rad); html += `<div class="ring-node ${n.healthy?'':'offline'}" style="left:${x}px;top:${y}px">${esc(n.node_id)}<br><span class="small">${n.chunk_count} chunks</span></div>`; } return html; }
-async function showPipeline(id){ const r=await api('/files/'+id+'/pipeline'); if(!r.ok){ alert(await r.text()); return; } const j=await r.json(); selectedFile.innerHTML = `<b>${esc(j.filename)}</b> • ${j.size_human} • ${j.chunks.length} chunks • Replication factor ${j.replication_factor}<br>Merkle root: ${esc(j.merkle_root)}`; pipeline.innerHTML = j.steps.map(s=>`<div class="step"><b>${esc(s.name)}</b><br><span class="small">${esc(s.detail)}</span></div>`).join(''); merkleTree.innerHTML = renderMerkle(j.merkle_tree.levels); hashRing.innerHTML = renderHashRing(j.hash_ring);
- assignments.innerHTML = '<h3>Chunk → Primary Node → Replica Nodes</h3><div class="assignment">' + j.hash_ring.assignments.map(a=>`<div class="assign-card"><b>chunk-${a.chunk_index}</b><br><span class="small">${esc(a.chunk_id)}</span><br>Primary: <span class="pill">${esc(a.primary_node)}</span><br>Replicas: ${a.replica_nodes.map(n=>`<span class="pill">${esc(n)}</span>`).join('')}</div>`).join('') + '</div>';
- chunksTable.innerHTML = `<h3>Chunk Technical Table</h3>` + renderTable(['Index','Chunk ID','SHA-256 Hash','Size','Replica Nodes'], j.chunks.map(c=>`<tr><td>${c.index}</td><td>${esc(c.chunk_id)}</td><td>${esc(c.hash)}</td><td>${c.size} B</td><td>${c.nodes.map(n=>`<span class="pill">${n}</span>`).join('')}</td></tr>`)); document.getElementById('academic').scrollIntoView({behavior:'smooth'}); }
-async function refreshAlerts(){ const r=await api('/alerts'); const rows=(await r.json()).slice(0,20).map(a=>`<tr><td><span class="pill ${a.severity}">${a.severity}</span></td><td>${esc(a.kind)}</td><td>${esc(a.message)}</td><td>${fmtTime(a.time)}</td></tr>`); alertsTable.innerHTML=renderTable(['Severity','Type','Message','Time'],rows); }
-async function refreshEvents(){ const r=await api('/events'); const rows=(await r.json()).slice(0,30).map(e=>`<tr><td>${fmtTime(e.time)}</td><td>${esc(e.kind)}</td><td><span class="pill ${e.severity}">${e.severity}</span></td><td>${esc(e.message)}</td></tr>`); eventsTable.innerHTML=renderTable(['Timestamp','Event Type','Severity','Description'],rows); }
-async function loadDemoFlow(){ const r=await api('/demo-flow'); const j=await r.json(); demoFlow.innerHTML = '<ol>' + j.flow.map(x=>`<li>${esc(x)}</li>`).join('') + '</ol>'; }
-async function refreshAll(){ statusText(); await Promise.all([refreshStatus(), refreshFiles(), refreshAlerts(), refreshEvents()]); }
-statusText(); loadDemoFlow(); refreshAll(); setInterval(refreshAll, 6000);
+
+function statusText() {
+  document.getElementById('authStatus').innerHTML = token ? '<span class="ok">Logged in</span>' : '<span class="muted">Not logged in</span>';
+}
+
+async function registerUser() {
+  const r = await api('/register', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({username:username.value,password:password.value})
+  });
+  authStatus.textContent = r.ok ? 'Registered. Now login.' : await r.text();
+  refreshAll();
+}
+
+async function loginUser() {
+  const r = await api('/login', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({username:username.value,password:password.value})
+  });
+
+  if (r.ok) {
+    const j = await r.json();
+    token = j.access_token;
+    localStorage.setItem('token', token);
+    authStatus.innerHTML = '<span class="ok">Logged in</span>';
+    refreshAll();
+  } else {
+    authStatus.textContent = await r.text();
+  }
+}
+
+async function failedLoginBurst() {
+  for (let i = 0; i < 5; i++) {
+    await api('/login', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({username:username.value,password:'wrong-password-' + Math.random()})
+    });
+  }
+  refreshAll();
+}
+
+async function uploadFile() {
+  if (!token) return uploadStatus.innerHTML = '<span class="bad">Login first.</span>';
+
+  const f = fileInput.files[0];
+  if (!f) return uploadStatus.textContent = 'Choose a file first.';
+
+  const fd = new FormData();
+  fd.append('file', f);
+
+  const r = await api('/files/upload', { method:'POST', body:fd });
+
+  if (r.ok) {
+    const j = await r.json();
+    uploadStatus.innerHTML = `<span class="ok">Uploaded ${esc(j.filename)}</span><br><span class="small">${j.chunks} chunks • RF ${j.replication_factor} • ${j.size_human} • ${j.elapsed_ms}ms</span>`;
+    await refreshAll();
+    await showPipeline(j.file_id);
+  } else {
+    uploadStatus.textContent = await r.text();
+  }
+}
+
+async function downloadFile(id) {
+  const r = await api('/files/' + id + '/download');
+  if (!r.ok) {
+    alert(await r.text());
+    refreshAll();
+    return;
+  }
+
+  const blob = await r.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'recovered-file';
+  a.click();
+  setTimeout(refreshAll, 400);
+}
+
+async function corruptNode(id) {
+  const r = await api('/nodes/' + id + '/corrupt-one-chunk', { method:'POST' });
+  if (!r.ok) alert(await r.text());
+  refreshAll();
+}
+
+async function toggleNode(id) {
+  await api('/nodes/' + id + '/toggle', { method:'POST' });
+  refreshAll();
+}
+
+function renderTable(headers, rows) {
+  if (!rows.length) return '<p class="muted">No records yet.</p>';
+  return `<table><thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table>`;
+}
+
+async function refreshStatus() {
+  const r = await api('/status');
+  const j = await r.json();
+  const m = j.metrics || {};
+
+  metrics.innerHTML = [
+    ['Files', m.files || 0],
+    ['Logical Chunks', m.logical_chunks || 0],
+    ['Stored Replicas', m.stored_replicas || 0],
+    ['Healthy Nodes', `${m.healthy_nodes || 0}/${m.total_nodes || 0}`],
+    ['IDS Alerts', m.alerts || 0],
+    ['Storage Used', m.storage_used_human || '0 B']
+  ].map(x => `<div class="metric"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
+
+  topology.innerHTML =
+    `<div class="coordinator">Coordinator<br><span class="small">Auth • Routing • IDS</span></div><div class="arrow">→</div>` +
+    j.nodes.map(n => `<div class="topnode ${n.healthy ? '' : 'offline'}">${n.node_id}<br><span class="${n.healthy ? 'ok' : 'bad'}">${n.status}</span></div>`).join('');
+
+  nodes.innerHTML = j.nodes.map(n => `
+    <div class="node ${n.healthy ? '' : 'offline'}">
+      <h3>${n.node_id}</h3>
+      <p class="${n.healthy ? 'ok' : 'bad'}">${n.status}</p>
+      <p>Stored replicas: <b>${n.chunk_count}</b></p>
+      <p>Corruptions: <b>${n.corruptions}</b></p>
+      <button class="danger small" onclick="corruptNode('${n.node_id}')">Corrupt One Chunk</button>
+      <button class="secondary small" onclick="toggleNode('${n.node_id}')">Toggle Health</button>
+    </div>
+  `).join('');
+}
+
+async function refreshFiles() {
+  if (!token) return filesTable.innerHTML = '<span class="bad">Login first.</span>';
+
+  const r = await api('/files');
+  if (!r.ok) return filesTable.textContent = await r.text();
+
+  latestFiles = await r.json();
+
+  const rows = latestFiles.map(f => `
+    <tr>
+      <td>${esc(f.filename)}<br><span class="small">${f.file_id}</span></td>
+      <td>${f.size_human}</td>
+      <td>${f.chunks}</td>
+      <td>${f.replicas}</td>
+      <td><span class="pill">${f.status}</span></td>
+      <td>${f.node_distribution.map(n => `<span class="pill">${n}</span>`).join('')}</td>
+      <td>
+        <button class="small" onclick="showPipeline('${f.file_id}')">Pipeline</button>
+        <button class="secondary small" onclick="downloadFile('${f.file_id}')">Download & Verify</button>
+      </td>
+    </tr>
+  `);
+
+  filesTable.innerHTML = renderTable(['File','Size','Chunks','Replicas','Status','Nodes','Actions'], rows);
+}
+
+function renderMerkle(levels) {
+  if (!levels || !levels.length) return '<p class="muted">No Merkle data.</p>';
+  return levels.map((level, i) => `
+    <div class="merkle-level">
+      <span class="pill">${i === levels.length - 1 ? 'Root' : 'Level ' + i}</span>
+      ${level.map(h => `<span class="hashbox">${esc(h)}</span>`).join('')}
+    </div>
+  `).join('');
+}
+
+function renderHashRing(data) {
+  const nodes = data?.nodes || [];
+  const center = 180, radius = 130;
+  let html = '<div class="ring-center">Consistent<br>Hash Ring</div>';
+
+  for (const n of nodes) {
+    const rad = (n.angle - 90) * Math.PI / 180;
+    const x = center + radius * Math.cos(rad);
+    const y = center + radius * Math.sin(rad);
+    html += `<div class="ring-node ${n.healthy ? '' : 'offline'}" style="left:${x}px;top:${y}px">${esc(n.node_id)}<br><span class="small">${n.chunk_count} chunks</span></div>`;
+  }
+
+  return html;
+}
+
+async function showPipeline(id) {
+  const r = await api('/files/' + id + '/pipeline');
+  if (!r.ok) {
+    alert(await r.text());
+    return;
+  }
+
+  const j = await r.json();
+
+  selectedFile.innerHTML = `<b>${esc(j.filename)}</b> • ${j.size_human} • ${j.chunks.length} chunks • Replication factor ${j.replication_factor}<br>Merkle root: ${esc(j.merkle_root)}`;
+
+  pipeline.innerHTML = j.steps.map(s => `
+    <div class="step">
+      <b>${esc(s.name)}</b><br>
+      <span class="small">${esc(s.detail)}</span>
+    </div>
+  `).join('');
+
+  merkleTree.innerHTML = renderMerkle(j.merkle_tree.levels);
+  hashRing.innerHTML = renderHashRing(j.hash_ring);
+
+  assignments.innerHTML =
+    '<h3>Chunk → Primary Node → Replica Nodes</h3><div class="assignment">' +
+    j.hash_ring.assignments.map(a => `
+      <div class="assign-card">
+        <b>chunk-${a.chunk_index}</b><br>
+        <span class="small">${esc(a.chunk_id)}</span><br>
+        Primary: <span class="pill">${esc(a.primary_node)}</span><br>
+        Replicas: ${a.replica_nodes.map(n => `<span class="pill">${esc(n)}</span>`).join('')}
+      </div>
+    `).join('') +
+    '</div>';
+
+  chunksTable.innerHTML =
+    `<h3>Chunk Technical Table</h3>` +
+    renderTable(['Index','Chunk ID','SHA-256 Hash','Size','Replica Nodes'], j.chunks.map(c => `
+      <tr>
+        <td>${c.index}</td>
+        <td>${esc(c.chunk_id)}</td>
+        <td>${esc(c.hash)}</td>
+        <td>${c.size} B</td>
+        <td>${c.nodes.map(n => `<span class="pill">${n}</span>`).join('')}</td>
+      </tr>
+    `));
+
+  document.getElementById('academic').scrollIntoView({ behavior:'smooth' });
+}
+
+async function refreshAlerts() {
+  const r = await api('/alerts');
+  const rows = (await r.json()).slice(0,20).map(a => `
+    <tr>
+      <td><span class="pill ${a.severity}">${a.severity}</span></td>
+      <td>${esc(a.kind)}</td>
+      <td>${esc(a.message)}</td>
+      <td>${fmtTime(a.time)}</td>
+    </tr>
+  `);
+  alertsTable.innerHTML = renderTable(['Severity','Type','Message','Time'], rows);
+}
+
+async function refreshEvents() {
+  const r = await api('/events');
+  const rows = (await r.json()).slice(0,30).map(e => `
+    <tr>
+      <td>${fmtTime(e.time)}</td>
+      <td>${esc(e.kind)}</td>
+      <td><span class="pill ${e.severity}">${e.severity}</span></td>
+      <td>${esc(e.message)}</td>
+    </tr>
+  `);
+  eventsTable.innerHTML = renderTable(['Timestamp','Event Type','Severity','Description'], rows);
+}
+
+async function loadDemoFlow() {
+  const r = await api('/demo-flow');
+  const j = await r.json();
+  demoFlow.innerHTML = '<ol>' + j.flow.map(x => `<li>${esc(x)}</li>`).join('') + '</ol>';
+}
+
+async function refreshAll() {
+  statusText();
+  await Promise.all([
+    refreshStatus(),
+    refreshFiles(),
+    refreshAlerts(),
+    refreshEvents()
+  ]);
+}
+
+statusText();
+loadDemoFlow();
+refreshAll();
+setInterval(refreshAll, 6000);
 </script>
 </body>
 </html>

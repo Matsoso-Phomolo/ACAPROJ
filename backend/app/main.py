@@ -18,9 +18,12 @@ app = FastAPI(
 app.add_middleware(RateLimitMiddleware)
 app.include_router(router)
 
-# backend/app/main.py -> backend -> project root
-BASE_DIR = Path(__file__).resolve().parents[2]
-STATIC_DIR = BASE_DIR / "frontend" / "static"
+APP_DIR = Path(__file__).resolve().parent
+STATIC_DIR = APP_DIR.parent / "frontend" / "static"
+
+if not STATIC_DIR.exists():
+    STATIC_DIR = Path("/app/frontend/static")
+
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 
@@ -32,6 +35,7 @@ def home():
 @app.get("/health")
 def health():
     return {"status": "ok", "service": settings.app_name, "version": "0.3.0"}
+
 
 @app.get("/healthz")
 def healthz():

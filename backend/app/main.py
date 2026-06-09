@@ -17,7 +17,10 @@ app = FastAPI(
     version="0.3.0",
 )
 
-# CORS FOR VERCEL FRONTEND
+# --------------------------------------------------
+# CORS CONFIGURATION
+# --------------------------------------------------
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -26,24 +29,47 @@ app.add_middleware(
         "http://localhost:8000",
         "http://127.0.0.1:8000",
     ],
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# --------------------------------------------------
+# IDS RATE LIMITING
+# --------------------------------------------------
+
 app.add_middleware(RateLimitMiddleware)
+
+# --------------------------------------------------
+# API ROUTES
+# --------------------------------------------------
 
 app.include_router(router)
 
+# --------------------------------------------------
+# STATIC FILES
+# --------------------------------------------------
+
 APP_DIR = Path(__file__).resolve().parent
+
+# Local development path
 STATIC_DIR = APP_DIR.parent / "frontend" / "static"
 
+# Docker/Render path
 if not STATIC_DIR.exists():
     STATIC_DIR = Path("/app/frontend/static")
 
 if STATIC_DIR.exists():
-    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+    app.mount(
+        "/static",
+        StaticFiles(directory=str(STATIC_DIR)),
+        name="static",
+    )
 
+# --------------------------------------------------
+# HOME PAGE
+# --------------------------------------------------
 
 @app.get("/", response_class=HTMLResponse)
 def home():
@@ -53,14 +79,34 @@ def home():
         return index_file.read_text(encoding="utf-8")
 
     return """
+    <!DOCTYPE html>
     <html>
-        <body>
-            <h1>Secure Distributed Storage Security Platform</h1>
-            <p>Backend running successfully.</p>
-        </body>
+    <head>
+        <title>Secure Distributed Storage Security Platform</title>
+        <style>
+            body{
+                font-family:Arial,sans-serif;
+                text-align:center;
+                padding:60px;
+                background:#0f172a;
+                color:white;
+            }
+            h1{
+                color:#60a5fa;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Secure Distributed Storage Security Platform</h1>
+        <p>Backend is running successfully.</p>
+        <p>Deploy frontend separately on Vercel.</p>
+    </body>
     </html>
     """
 
+# --------------------------------------------------
+# HEALTH CHECKS
+# --------------------------------------------------
 
 @app.get("/health")
 def health():
@@ -73,4 +119,6 @@ def health():
 
 @app.get("/healthz")
 def healthz():
-    return {"status": "ok"}
+    return {
+        "status": "ok"
+    }

@@ -25,6 +25,26 @@
     button.secondary { background:#34455d; }
     button.danger { background:#dc2626; }
     button.small { padding:8px; font-size:12px; margin:3px 0; }
+
+    .password-container { position:relative; width:100%; }
+    .password-container input { width:100%; padding-right:48px; }
+    .eye-btn {
+      position:absolute;
+      right:10px;
+      top:50%;
+      transform:translateY(-50%);
+      width:auto;
+      margin:0;
+      padding:4px 8px;
+      background:transparent;
+      border:none;
+      color:white;
+      font-size:18px;
+      cursor:pointer;
+      z-index:5;
+    }
+    .eye-btn:hover { color:var(--cyan); }
+
     .ok { color:var(--green); } .bad{ color:#f87171; } .warn{ color:var(--yellow); } .muted{ color:var(--muted); } .cyan{ color:var(--cyan); }
     .metrics { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:18px; }
     .metric { background:var(--panel2); border:1px solid var(--line); border-radius:14px; padding:16px; }
@@ -82,7 +102,12 @@
     <div class="card">
       <h2>Account</h2>
       <input id="username" value="demo" placeholder="Username" />
-      <input id="password" value="password123" type="password" placeholder="Password" />
+
+      <div class="password-container">
+        <input id="password" value="password123" type="password" placeholder="Password" />
+        <button type="button" class="eye-btn" onclick="togglePassword()">👁</button>
+      </div>
+
       <button onclick="registerUser()">Register</button>
       <button onclick="loginUser()">Login</button>
       <button class="danger" onclick="failedLoginBurst()">Trigger Brute-Force Demo</button>
@@ -174,6 +199,19 @@ const api = (path, opts = {}) =>
 
 const fmtTime = ms => new Date(ms).toLocaleString();
 const esc = s => String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+
+function togglePassword() {
+  const passwordField = document.getElementById("password");
+  const btn = document.querySelector(".eye-btn");
+
+  if (passwordField.type === "password") {
+    passwordField.type = "text";
+    btn.textContent = "🙈";
+  } else {
+    passwordField.type = "password";
+    btn.textContent = "👁";
+  }
+}
 
 function statusText() {
   document.getElementById('authStatus').innerHTML = token ? '<span class="ok">Logged in</span>' : '<span class="muted">Not logged in</span>';
